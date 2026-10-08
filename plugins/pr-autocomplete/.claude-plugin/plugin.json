@@ -1,0 +1,10 @@
+{
+  "name": "pr-autocomplete",
+  "version": "0.1.0",
+  "description": "Typeahead for GitHub PRs when you type # in a git repo",
+  "author": {
+    "name": "Gustavo Hoirisch"
+  },
+  "repository": "https://github.com/gugahoi/claude-mods",
+  "license": "MIT"
+}

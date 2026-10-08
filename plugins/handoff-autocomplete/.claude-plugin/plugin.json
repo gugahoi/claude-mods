@@ -1,0 +1,10 @@
+{
+  "name": "handoff-autocomplete",
+  "version": "0.1.0",
+  "description": "Typeahead for recent handoff plan files when you type handoff",
+  "author": {
+    "name": "Gustavo Hoirisch"
+  },
+  "repository": "https://github.com/gugahoi/claude-mods",
+  "license": "MIT"
+}

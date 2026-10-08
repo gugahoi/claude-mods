@@ -1,0 +1,23 @@
+{
+  "name": "pr-bar",
+  "version": "0.1.0",
+  "description": "The current branch's GitHub PR as a bar above the prompt or a panel, with one-press commit, review and CI actions",
+  "author": {
+    "name": "Gustavo Hoirisch"
+  },
+  "repository": "https://github.com/gugahoi/claude-mods",
+  "license": "MIT",
+  "types": "./types/index.d.ts",
+  "userConfig": {
+    "layout": {
+      "type": "string",
+      "title": "Layout",
+      "description": "Where the PR shows: a bar above the prompt, or a panel (docked beside the transcript in fullscreen, above the prompt otherwise). /pr opens the panel either way.",
+      "options": [
+        "bar",
+        "panel"
+      ],
+      "default": "bar"
+    }
+  }
+}
