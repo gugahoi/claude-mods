@@ -5,7 +5,7 @@ hooks that change how the terminal behaves and looks.
 
 | Mod | What it does |
 | --- | --- |
-| [pr-autocomplete](plugins/pr-autocomplete) | Type `#` in a git repo and pick a pull request from the typeahead, filtered by number or title. |
+| [gh-autocomplete](plugins/gh-autocomplete) | Type `#` in a git repo and pick a pull request or open issue from the typeahead, filtered by number or title; `#pr` / `#issue` narrow to one kind. |
 | [pr-bar](plugins/pr-bar) | The current branch's PR (state, CI, unresolved threads) as a bar above the prompt or a `/pr` panel, with buttons to commit and open a draft PR, check review feedback or fix CI. |
 | [handoff-autocomplete](plugins/handoff-autocomplete) | Type `handoff` and pick a recent `/handoff` plan file; the path is filled in for you. |
 
@@ -14,13 +14,13 @@ hooks that change how the terminal behaves and looks.
 At the prompt of a Claude Code terminal session, install the ones you want:
 
 ```
-/plugin install pr-autocomplete --marketplace gugahoi/claude-mods
+/plugin install gh-autocomplete --marketplace gugahoi/claude-mods
 /plugin install pr-bar --marketplace gugahoi/claude-mods
 /plugin install handoff-autocomplete --marketplace gugahoi/claude-mods
 ```
 
 The first one asks to add the marketplace: answer `y`, then pick a scope.
-`pr-autocomplete` and `pr-bar` need the [GitHub CLI](https://cli.github.com)
+`gh-autocomplete` and `pr-bar` need the [GitHub CLI](https://cli.github.com)
 installed and signed in (`gh auth login`).
 
 ## Develop

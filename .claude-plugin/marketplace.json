@@ -1,12 +1,12 @@
 {
   "name": "claude-mods",
-  "description": "Claude Code mods: GitHub PR typeahead, a PR status bar and panel, and handoff file typeahead",
+  "description": "Claude Code mods: GitHub PR and issue typeahead, a PR status bar and panel, and handoff file typeahead",
   "owner": { "name": "Gustavo Hoirisch" },
   "plugins": [
     {
-      "name": "pr-autocomplete",
-      "source": "./plugins/pr-autocomplete",
-      "description": "Typeahead for GitHub PRs when you type # in a git repo"
+      "name": "gh-autocomplete",
+      "source": "./plugins/gh-autocomplete",
+      "description": "Typeahead for GitHub PRs and issues when you type # in a git repo"
     },
     {
       "name": "pr-bar",
