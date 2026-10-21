@@ -1,6 +1,6 @@
 {
   "name": "pr-bar",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "The current branch's GitHub PR as a bar above the prompt or a panel, with one-press commit, review and CI actions",
   "author": {
     "name": "Gustavo Hoirisch"

@@ -20,10 +20,10 @@ export type PrBarPr = {
 }
 
 /** null: draw nothing (not a repo, detached, default branch, gh failing) */
-export type PrBarSnapshot = { branch: string; isDirty: boolean; pr: PrBarPr | null }
+export type PrBarSnapshot = { branch: string; pr: PrBarPr | null }
 
 declare module 'claude-code' {
   interface PluginState {
-    'pr-bar': { snapshot: PrBarSnapshot | null }
+    'pr-bar': { snapshot: PrBarSnapshot | null; feedbackChecked: number | null }
   }
 }

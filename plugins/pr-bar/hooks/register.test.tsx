@@ -47,7 +47,6 @@ type Table = Record<string, Out>
 
 const WITH_PR: Table = {
   'git rev-parse --abbrev-ref': { stdout: 'feat/pull-to-refresh\n' },
-  'git status --porcelain': { stdout: '' },
   'gh pr view': { stdout: JSON.stringify(PR) },
   'gh api graphql': { stdout: JSON.stringify(THREADS) },
 }
@@ -100,6 +99,7 @@ async function start($: Engine, on: On, table: Table) {
   on('command.register', ($, e) => ({ value: { command: e.name } }))
   on('ui.open', ($, e) => (opened.push(e.focus ? `${e.id} (focused)` : e.id), { value: { isPlaced: true as const } }))
   on('prompt.submit', ($, e) => (sent.push(e.text), { text: e.text }))
+  on('turn.complete', () => ({ text: '' }))
   await $.session.start({ cwd: '/repo', surface: 'terminal', isInteractive: true })
   await clock.settle()
   return { sent, opened }
@@ -113,7 +113,6 @@ test('summarises statusCheckRollup as gh pr checks buckets it', async () => {
 test('loads the branch, its PR and the unresolved threads', async () => {
   expect(await load(fake(WITH_PR))).toEqual({
     branch: 'feat/pull-to-refresh',
-    isDirty: false,
     pr: {
       number: 128,
       title: PR.title,
@@ -146,7 +145,7 @@ test('loads the branch, its PR and the unresolved threads', async () => {
       ],
     },
   })
-  expect(await load(fake(NO_PR))).toEqual({ branch: 'feat/pull-to-refresh', isDirty: false, pr: null })
+  expect(await load(fake(NO_PR))).toEqual({ branch: 'feat/pull-to-refresh', pr: null })
 })
 
 test('draws nothing on the default branch, a detached HEAD, outside a repo or when gh fails', async () => {
@@ -161,12 +160,15 @@ test('draws nothing on the default branch, a detached HEAD, outside a repo or wh
 test('shows only the buttons that apply', async () => {
   const pr: PrBarPr = { number: 1, title: 't', url: 'u', state: 'open', checks: { passed: 1, failed: 0, pending: 0 }, checkRuns: [], review: '', threads: [] }
   const threads = [{ path: 'a.ts', line: 1, author: 'x', body: 'y', url: 'u' }]
-  const keys = (snap: Parameters<typeof buttons>[0]) => buttons(snap).map(b => b.key)
-  expect(keys({ branch: 'b', isDirty: false, pr: null })).toEqual(['commit'])
-  expect(keys({ branch: 'b', isDirty: false, pr })).toEqual([])
-  expect(keys({ branch: 'b', isDirty: true, pr })).toEqual(['commit'])
-  expect(keys({ branch: 'b', isDirty: false, pr: { ...pr, threads, checks: { ...pr.checks, failed: 1 } } })).toEqual(['feedback', 'ci'])
-  expect(keys({ branch: 'b', isDirty: false, pr: { ...pr, state: 'merged', threads } })).toEqual([])
+  const keys = (p: PrBarPr | null, checked?: number) => buttons({ branch: 'b', pr: p }, checked).map(b => b.key)
+  expect(keys(null)).toEqual(['commit'])
+  expect(keys(pr)).toEqual([])
+  expect(keys({ ...pr, threads, checks: { ...pr.checks, failed: 1 } })).toEqual(['feedback', 'ci'])
+  expect(keys({ ...pr, state: 'merged', threads })).toEqual([])
+  // Commit + resolve: once the feedback on this PR was checked, while threads are open.
+  expect(keys({ ...pr, threads }, 1)).toEqual(['feedback', 'resolve'])
+  expect(keys({ ...pr, threads }, 2)).toEqual(['feedback'])
+  expect(keys(pr, 1)).toEqual([])
 })
 
 test('the band shows the PR on one row and its buttons submit the prompts', async ($, on) => {
@@ -274,4 +276,27 @@ test('the panel layout opens nothing on the default branch', { options: { layout
   engineBand(on)
   const { opened } = await start($, on, { ...WITH_PR, 'git rev-parse --abbrev-ref': { stdout: 'master\n' } })
   expect(opened).toEqual([])
+})
+
+test('after Check feedback runs the band offers to commit and resolve', async ($, on) => {
+  const { sent } = await start($, on, WITH_PR)
+  const turnEnds = () => $.turn.complete({ answer: '', durationMs: 0, isAborted: false, turnId: 't', reason: 'answer' })
+  const keys = async () => {
+    const ui = await $.ui.mount({ plugin: 'pr-bar', surface: 'terminal', ...BAND })
+    return { ui, keys: (await ui.findAll({ type: 'Button' })).map(b => b.key) }
+  }
+
+  let band = await keys()
+  expect(band.keys).toEqual(['feedback', 'ci'])
+  await band.ui.press({ key: 'feedback' })
+  await band.ui.unmount()
+  expect((await keys()).keys).toEqual(['feedback', 'ci']) // not while Claude is still checking
+
+  await turnEnds()
+  band = await keys()
+  expect(band.keys).toEqual(['feedback', 'resolve', 'ci'])
+  await band.ui.press({ key: 'resolve' })
+  await band.ui.unmount()
+  expect(sent.at(-1)).toBe("Commit the changes and push, then reply to and resolve each review thread on PR #128 we've addressed.")
+  expect((await keys()).keys).toEqual(['feedback', 'ci'])
 })

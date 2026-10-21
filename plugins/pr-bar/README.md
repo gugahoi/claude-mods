@@ -38,12 +38,13 @@ The buttons show only when they apply, and each submits a prompt:
 
 | Button | When | Prompt |
 | --- | --- | --- |
-| Commit + draft PR (`c`) | no PR yet, or uncommitted changes | Commit the changes, push, and open a draft PR |
+| Commit + draft PR (`c`) | no PR yet | Commit the changes, push, and open a draft PR |
 | Check feedback (`f`) | open PR with unresolved threads | I've received feedback on PR #n. Check each unresolved review comment: is it correct and do we need to fix it? |
+| Commit + resolve (`r`) | after the Check feedback turn ends, while threads are unresolved | Commit the changes and push, then reply to and resolve each review thread on PR #n we've addressed. |
 | Fix CI (`x`) | open PR with a failed check | CI is failing on PR #n. Find out why and fix it. |
 
 Click a button, or focus the band (ctrl+x tab) and press its letter: `c`,
-`f` or `x`. The bar steps aside while a survey uses the band.
+`f`, `r` or `x`. The bar steps aside while a survey uses the band.
 
 ## The panel: `/pr`
 
@@ -68,7 +69,7 @@ src/feed/useVideoPreloader.ts:134 @reviewer
 ```
 
 Every check and thread is a link to it on GitHub. The buttons are the bar's.
-`/pr` opens the panel with the keyboard, so `c`, `f` and `x` press them at once
+`/pr` opens the panel with the keyboard, so `c`, `f`, `r` and `x` press them at once
 (unless you have text in the prompt); Esc hands the keyboard back to the prompt,
 ctrl+x tab returns to the panel, and ctrl+x x closes it.
 
@@ -85,7 +86,7 @@ layout. `/plugin install` also asks for it.
 
 ## How it refreshes
 
-It runs `git rev-parse`, `git status --porcelain`, `gh pr view --json ...` and
+It runs `git rev-parse`, `gh pr view --json ...` and
 one `gh api graphql` query for the review threads when the session starts,
 after each turn (Claude may have pushed or switched branch), and every 60
 seconds so CI results arrive while the session is idle. One fetch runs at a

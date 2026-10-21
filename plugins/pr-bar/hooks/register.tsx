@@ -4,6 +4,8 @@ import type { ElementTable, EngineInterface, Register } from 'claude-code'
 import type { PrBarCheck, PrBarChecks, PrBarPr, PrBarSnapshot, PrBarThread } from '../types'
 
 const snapshot = atom({ plugin: 'pr-bar', key: 'snapshot' } as const, null)
+// The PR whose feedback Claude has checked: its threads can now be committed and resolved.
+const feedbackChecked = atom({ plugin: 'pr-bar', key: 'feedbackChecked' } as const, null)
 const PANE = 'pr'
 
 const FIELDS = 'number,title,state,isDraft,url,statusCheckRollup,reviewDecision'
@@ -59,10 +61,10 @@ const STATE_BG = { draft: 'inactive', open: 'success', merged: 'merged', closed:
 const ciBg = ({ passed, failed, pending }: PrBarChecks) =>
   failed ? 'error' : pending ? 'warning' : passed ? 'success' : 'inactive'
 
-export function buttons({ isDirty, pr }: PrBarSnapshot) {
+export function buttons({ pr }: PrBarSnapshot, checked: number | null = null) {
   const out: { key: string; label: string; hotkey: string; prompt: string }[] = []
   const isLive = pr?.state === 'draft' || pr?.state === 'open'
-  if (!pr || isDirty)
+  if (!pr)
     out.push({ key: 'commit', label: 'Commit + draft PR', hotkey: 'c', prompt: 'Commit the changes, push, and open a draft PR' })
   if (pr && isLive && pr.threads.length > 0)
     out.push({
@@ -70,6 +72,13 @@ export function buttons({ isDirty, pr }: PrBarSnapshot) {
       label: 'Check feedback',
       hotkey: 'f',
       prompt: `I've received feedback on PR #${pr.number}. Check each unresolved review comment: is it correct and do we need to fix it?`,
+    })
+  if (pr && isLive && pr.threads.length > 0 && checked === pr.number)
+    out.push({
+      key: 'resolve',
+      label: 'Commit + resolve',
+      hotkey: 'r',
+      prompt: `Commit the changes and push, then reply to and resolve each review thread on PR #${pr.number} we've addressed.`,
     })
   if (pr && isLive && pr.checks.failed > 0)
     out.push({ key: 'ci', label: 'Fix CI', hotkey: 'x', prompt: `CI is failing on PR #${pr.number}. Find out why and fix it.` })
@@ -81,12 +90,8 @@ export async function load($: EngineInterface): Promise<PrBarSnapshot | null> {
   const branch = head.stdout.trim()
   // ponytail: default branch by name, and gh is skipped there (no PR is ever opened from it)
   if (head.exitCode !== 0 || ['HEAD', 'master', 'main'].includes(branch)) return null
-  const [status, view] = await Promise.all([
-    $.process.run(['git', 'status', '--porcelain']),
-    $.process.run(['gh', 'pr', 'view', '--json', FIELDS]),
-  ])
-  const isDirty = status.stdout.trim() !== ''
-  if (view.exitCode !== 0) return /no pull requests found/i.test(view.stderr) ? { branch, isDirty, pr: null } : null
+  const view = await $.process.run(['gh', 'pr', 'view', '--json', FIELDS])
+  if (view.exitCode !== 0) return /no pull requests found/i.test(view.stderr) ? { branch, pr: null } : null
   const pr: GhView = JSON.parse(view.stdout)
   const threads = await $.process.run([
     'gh', 'api', 'graphql',
@@ -115,7 +120,6 @@ export async function load($: EngineInterface): Promise<PrBarSnapshot | null> {
     })
   return {
     branch,
-    isDirty,
     pr: {
       number: pr.number,
       title: pr.title,
@@ -164,12 +168,20 @@ const pills = (Text: Els['Text'], pr: PrBarPr) => [
   pr.threads.length ? pill(Text, 'warning', `${pr.threads.length} unresolved`) : null,
 ]
 
-const actions = ($: EngineInterface, { Box, Button }: Els, snap: PrBarSnapshot, marginTop = 0) => {
-  const list = buttons(snap)
+// Set when Check feedback is pressed; turn.complete hands it to feedbackChecked once that turn ends.
+let feedbackAsked: number | null = null
+
+const actions = ($: EngineInterface, { Box, Button }: Els, snap: PrBarSnapshot, checked: number | null, marginTop = 0) => {
+  const list = buttons(snap, checked)
+  const press = async (key: string, prompt: string) => {
+    if (key === 'feedback') feedbackAsked = snap.pr?.number ?? null
+    if (key === 'resolve') await update($, feedbackChecked, () => null)
+    return $.prompt.submit({ text: prompt, asUser: true })
+  }
   return list.length > 0 ? (
     <Box gap={1} marginTop={marginTop}>
       {list.map(b => (
-        <Button key={b.key} label={b.label} hotkey={b.hotkey} onPress={() => $.prompt.submit({ text: b.prompt, asUser: true })} />
+        <Button key={b.key} label={b.label} hotkey={b.hotkey} onPress={() => press(b.key, b.prompt)} />
       ))}
     </Box>
   ) : null
@@ -186,8 +198,14 @@ export const register: Register = (on, options) => {
     return next(e)
   })
 
-  on('turn.complete', ($, e, next) => {
-    if (!e.agentId) void refresh($) // Claude may have committed, pushed or switched branch
+  on('turn.complete', async ($, e, next) => {
+    if (e.agentId) return next(e)
+    if (feedbackAsked !== null) {
+      const number = feedbackAsked
+      feedbackAsked = null
+      await update($, feedbackChecked, () => number)
+    }
+    void refresh($) // Claude may have committed, pushed or switched branch
     return next(e)
   })
 
@@ -202,6 +220,7 @@ export const register: Register = (on, options) => {
   // under it. A band Button takes its hotkey once the band has focus.
   on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
     const snap = await read($, snapshot)
+    const checked = await read($, feedbackChecked)
     if (isPanel || !snap || e.props.hasSurvey) return next(e)
     const els = $.ui.resolve(e)
     const { Box, Text, Link } = els
@@ -222,7 +241,7 @@ export const register: Register = (on, options) => {
         <Box flexDirection="row" gap={1} width={e.props.bodyColumns} backgroundColor="subtle">
           {bar}
         </Box>
-        {actions($, els, snap)}
+        {actions($, els, snap, checked)}
       </Box>
     )
   })
@@ -231,6 +250,7 @@ export const register: Register = (on, options) => {
   // thread listed, every one a link. A Button takes its hotkey once the panel has focus.
   on('ui.render', { component: 'Pane', requestId: PANE }, async ($, e) => {
     const snap = await read($, snapshot)
+    const checked = await read($, feedbackChecked)
     const els = $.ui.resolve(e)
     const { Box, Text, Link } = els
     if (!snap) return <Text dimColor>No pull request here: not a git repo, the default branch, or gh is unavailable.</Text>
@@ -239,7 +259,7 @@ export const register: Register = (on, options) => {
       return (
         <Box flexDirection="column">
           <Box gap={1}>{[pill(Text, 'inactive', 'no PR'), <Text>{snap.branch}</Text>]}</Box>
-          {actions($, els, snap, 1)}
+          {actions($, els, snap, checked, 1)}
         </Box>
       )
 
@@ -285,7 +305,7 @@ export const register: Register = (on, options) => {
           </Box>
         ))}
 
-        {actions($, els, snap, 1)}
+        {actions($, els, snap, checked, 1)}
       </Box>
     )
   })
