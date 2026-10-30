@@ -1,0 +1,11 @@
+{
+  "name": "bang-picker",
+  "version": "0.1.0",
+  "description": "Pick a ! command from Claude's last reply into the prompt",
+  "author": {
+    "name": "Gustavo Hoirisch"
+  },
+  "repository": "https://github.com/gugahoi/claude-mods",
+  "license": "MIT",
+  "types": "./types/index.d.ts"
+}

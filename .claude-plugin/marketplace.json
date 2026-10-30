@@ -1,6 +1,6 @@
 {
   "name": "claude-mods",
-  "description": "Claude Code mods: GitHub PR and issue typeahead, a PR status bar and panel, and handoff file typeahead",
+  "description": "Claude Code mods: GitHub PR and issue typeahead, a PR status bar and panel, handoff file typeahead, and a picker for Claude's suggested ! commands",
   "owner": { "name": "Gustavo Hoirisch" },
   "plugins": [
     {
@@ -17,6 +17,11 @@
       "name": "handoff-autocomplete",
       "source": "./plugins/handoff-autocomplete",
       "description": "Typeahead for recent /handoff plan files when you type handoff"
+    },
+    {
+      "name": "bang-picker",
+      "source": "./plugins/bang-picker",
+      "description": "Pick a ! command from Claude's last reply into the prompt"
     }
   ]
 }
