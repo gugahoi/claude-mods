@@ -73,3 +73,60 @@ test('a reply lists its commands, and a digit suggests one',async ($, on) => {
   expect((await working.find({ type: 'Text' }))?.text).toBe('engine')
   await working.unmount()
 })
+
+const PANE = {
+  plugin: 'bang-picker',
+  component: 'Pane',
+  requestId: 'bang',
+  surface: 'terminal',
+  props: {
+    title: 'Run a suggested command',
+    isFocused: true,
+    bodyColumns: 80,
+    placement: 'inline',
+    scroll: { offset: 0, bodyRows: 20 },
+    view: {},
+  },
+} as const
+
+const BANG = {
+  command: 'bang',
+  args: '',
+  origin: { kind: 'composer' },
+  presentation: { isFullscreen: false, columns: 80 },
+} as const
+
+test('/bang opens a dialog, and a digit suggests a command and closes it', async ($, on) => {
+  const suggested: string[] = []
+  const opened: string[] = []
+  const closed: string[] = []
+  on('command.register', (_, e) => ({ value: { command: e.name } }))
+  on('session.start', (_, e) => ({ cwd: e.cwd }))
+  on('turn.complete', (_, e) => ({ text: e.answer }))
+  on('ui.open', (_, e) => (opened.push(e.id), { value: { isPlaced: true } }))
+  on('ui.close', (_, e) => (closed.push(e.id), { value: undefined }))
+  on('prompt.suggest', (_, e) => (suggested.push(e.text), { isShown: true }))
+
+  await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
+  expect((await $.command.run(BANG)).text).toBe('No ! commands in the last reply.')
+  expect(opened).toEqual([])
+
+  await $.turn.complete({
+    answer: REPLY,
+    durationMs: 1,
+    isAborted: false,
+    turnId: 't1',
+    reason: 'answer',
+  })
+  await $.command.run(BANG)
+  expect(opened).toEqual(['bang'])
+
+  const ui = await $.ui.mount(PANE)
+  const buttons = await ui.findAll({ type: 'Button' })
+  expect(buttons.map(b => b.text)).toEqual(COMMANDS)
+
+  await ui.press({ key: '3' })
+  expect(suggested).toEqual(['!git push'])
+  expect(closed).toEqual(['bang'])
+  await ui.unmount()
+})

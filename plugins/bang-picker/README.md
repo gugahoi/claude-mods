@@ -24,6 +24,8 @@ Answer `y` to add the marketplace, then pick a scope.
   line; longer fenced blocks, such as heredocs, are skipped.
 - Up to 9 commands, deduplicated, from the main conversation's latest reply;
   the list is replaced every turn and hidden while Claude is working.
+- `/bang` opens the same list as a dialog, with long commands shown whole:
+  press a number to put it in the prompt, then Tab, Enter. Esc closes it.
 - ctrl+x tab focuses the band, ctrl+x ctrl+a collapses it.
 
 ## Develop

@@ -1,6 +1,6 @@
 {
   "name": "bang-picker",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Pick a ! command from Claude's last reply into the prompt",
   "author": {
     "name": "Gustavo Hoirisch"
